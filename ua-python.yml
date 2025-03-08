@@ -1,0 +1,46 @@
+# Python package
+# Create and test a Python package on multiple Python versions.
+# Also runs Mend Unified Agent on requirements.txt dependency file.
+
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+strategy:
+  matrix:
+    Python38:
+      python.version: '3.8'
+    Python39:
+      python.version: '3.9'
+    Python310:
+      python.version: '3.10'
+
+steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '$(python.version)'
+    displayName: 'Use Python $(python.version)'
+
+  - script: |
+      python -m pip install --upgrade pip
+      pip install -r requirements.txt
+    displayName: 'Install dependencies'
+
+  - script: |
+      curl -LJO https://unified-agent.s3.amazonaws.com/wss-unified-agent.jar
+      echo Unified Agent downloaded successfully
+      java -jar wss-unified-agent.jar
+    env:
+      WS_APIKEY: $(APIKEY)
+      WS_USERKEY: $(USERKEY)
+      WS_WSS_URL: $(WSS_URL)
+      WS_PRODUCTNAME: AZDO_$(System.TeamProject)
+      WS_PROJECTNAME: $(Build.Repository.Name)_$(Build.SourceBranchName)
+    displayName: 'Mend Unified Agent Scan'
+
+  - script: |
+      pip install pytest pytest-azurepipelines
+      pytest
+    displayName: 'pytest'
